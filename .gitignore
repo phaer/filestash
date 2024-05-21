@@ -7,7 +7,6 @@ test/
 *.o
 *.bin
 .DS_Store
-package-lock.json
 \#*\#
 .\#*
 *.log
