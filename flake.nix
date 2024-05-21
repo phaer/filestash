@@ -31,6 +31,7 @@
 
               patches = [
                   ./disable-plg-image-c.patch
+                  ./vm-in-asn1.patch
               ];
 
               buildPhase = ''

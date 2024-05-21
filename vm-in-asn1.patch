@@ -1,0 +1,13 @@
+diff --git a/webpack.config.js b/webpack.config.js
+index c63dea38..06a2a127 100644
+--- a/webpack.config.js
++++ b/webpack.config.js
+@@ -91,6 +91,8 @@ const config = {
+             "crypto": require.resolve("crypto-browserify"),
+             "buffer": require.resolve("buffer/"),
+             "stream": require.resolve("stream-browserify"),
++            // FIXME: add polyfill for vm-browserify
++            "vm": false,
+         },
+     },
+     mode: process.env.NODE_ENV || "production",
