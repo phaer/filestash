@@ -35,19 +35,19 @@
               ];
 
               buildPhase = ''
+                go generate -x ./server/...
                 make build_frontend
                 pushd public
                 make compress
                 popd
               '';
 
-              postInstall = ''
-                cp -R \
-                    $out/lib/node_modules/filestash/public \
-                    $out/lib/node_modules/filestash/server/ctrl/static/www
+              postFixup = ''
+                find . -path ./node_modules -prune -o -exec cp -r '{}' "$out/lib/node_modules/filestash/{}" ';'
               '';
 
               nativeBuildInputs = [
+                  pkgs.go
                   pkgs.pkg-config
                   pkgs.brotli
                   pkgs.gzip
@@ -65,7 +65,6 @@
 
               buildPhase = ''
                 mkdir -p $out/bin
-              	go generate -x ./server/...
                 go build --tags "fts5" -o $out/bin/filestash cmd/main.go
                 cp config/config.json $out/config.dist.json
               '';
