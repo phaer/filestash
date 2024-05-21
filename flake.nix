@@ -30,8 +30,8 @@
               makeCacheWritable = true;
 
               patches = [
-                  ./disable-plg-image-c.patch
-                  ./vm-in-asn1.patch
+                  ./patches/disable-plg-image-c.patch
+                  ./patches/vm-in-asn1.patch
               ];
 
               buildPhase = ''
