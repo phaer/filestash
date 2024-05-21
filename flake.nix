@@ -56,7 +56,7 @@
           }));
 
       makeBackend = pkgs: frontend:
-          pkgs.buildGoModule {
+          pkgs.buildGoModule (lib.fix (finalAttrs: {
               inherit (frontend) pname version;
               src = "${frontend}/lib/node_modules/filestash";
 
@@ -68,14 +68,22 @@
                 go build --tags "fts5" -o $out/bin/filestash cmd/main.go
                 cp config/config.json $out/config.dist.json
               '';
+
+              postInstall = ''
+                   wrapProgram $out/bin/filestash \
+                     --prefix PATH : ${lib.makeBinPath finalAttrs.propagatedBuildInputs}
+              '';
+
               propagatedBuildInputs = [
                   pkgs.curl
                   pkgs.emacs-nox
                   pkgs.ffmpeg
                   pkgs.zip
-                  pkgs.poppler_utils
+                  pkgs.poppler_utils.out
               ];
               nativeBuildInputs = [
+                  pkgs.makeWrapper
+                  pkgs.pkg-config
                   pkgs.gnumake
                   pkgs.curl
               ];
@@ -89,8 +97,7 @@
                   pkgs.libheif.dev
                   pkgs.giflib
               ];
-
-          };
+          }));
     in
       {
         packages = eachSystem (system: {
@@ -98,6 +105,7 @@
           npm = self.packages.${system}.nodejs.pkgs.npm;
           frontend = makeFrontend nixpkgs.legacyPackages.${system};
           backend = makeBackend nixpkgs.legacyPackages.${system} self.packages.${system}.frontend;
+          filestash = self.packages.${system}.backend;
         });
         devShells = eachSystem (system: {
           default =  with self.packages.${system}; nixpkgs.legacyPackages.${system}.mkShell {
