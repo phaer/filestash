@@ -28,6 +28,11 @@
               npmInstallFlags = [ "--include=dev" ];
               npmDepsHash = "sha256-G9UcUKc83Hx26frGcpSPsSykw23AdYMCgVlSMp+AW/U=";
               makeCacheWritable = true;
+
+              patches = [
+                  ./disable-plg-image-c.patch
+              ];
+
               buildPhase = ''
                 make build_frontend
                 pushd public

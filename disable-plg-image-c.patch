@@ -1,0 +1,14 @@
+diff --git a/server/plugin/index.go b/server/plugin/index.go
+index 4106baa9..de0bddc1 100644
+--- a/server/plugin/index.go
++++ b/server/plugin/index.go
+@@ -29,7 +29,8 @@ import (
+ 	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_editor_onlyoffice"
+ 	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_handler_console"
+ 	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_image_ascii"
+-	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_image_c"
++	// FIXME: undefined function: reallocarray in nix_build
++	//	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_image_c"
+ 	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_image_transcode"
+ 	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_search_stateless"
+ 	_ "github.com/mickael-kerjean/filestash/server/plugin/plg_security_scanner"
