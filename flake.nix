@@ -97,9 +97,26 @@
                   pkgs.libheif.dev
                   pkgs.giflib
               ];
+
+              meta.mainProgram = "filestash";
           }));
     in
       {
+        nixosModules.filestash = {
+          imports = [
+              ./module.nix
+              ({pkgs, ...}: {
+                  services.filestash.package = self.packages.${pkgs.system}.filestash;
+              })
+          ];
+        };
+
+        checks = eachSystem (system: {
+            filestash = nixpkgs.legacyPackages.${system}.callPackage ./test.nix {
+                nixosModule = self.nixosModules.filestash;
+            };
+        });
+
         packages = eachSystem (system: {
           nodejs = nixpkgs.legacyPackages.${system}.nodejs;
           npm = self.packages.${system}.nodejs.pkgs.npm;
