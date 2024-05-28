@@ -61,7 +61,7 @@
               inherit (frontend) pname version;
               src = "${frontend}/lib/node_modules/filestash";
 
-              vendorHash = "sha256-B2QHF6hE+Z/6X76kqYb5WO6prt8epwjy14c/tOKUZpc=";
+              vendorHash = "sha256-oPr2nk58MVUbas+1geFx8r/YM/qrYdbxqkvSIwJVGmo=";
 
               buildPhase = ''
                 mkdir -p $out/bin
