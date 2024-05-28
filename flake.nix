@@ -127,8 +127,14 @@
         devShells = eachSystem (system: {
           default =  with self.packages.${system}; nixpkgs.legacyPackages.${system}.mkShell {
             packages = [
+              nixpkgs.legacyPackages.${system}.go
+              nixpkgs.legacyPackages.${system}.gopls
               nodejs
               npm
+            ];
+            inputsFrom = [
+               frontend
+               backend
             ];
             shellHook = ''
               PATH=$PWD/node_modules/.bin:$PATH
