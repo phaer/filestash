@@ -18,6 +18,8 @@
                       (fs.fromSource (lib.sources.cleanSource ./.))
                       (fs.unions (map fs.maybeMissing [
                           ./flake.nix
+                          ./module.nix
+                          ./test.nix
                           ./flake.lock
                           ./node_modules
                       ]));
