@@ -7,6 +7,7 @@ require (
 	github.com/creack/pty v1.1.18
 	github.com/cretz/bine v0.1.0
 	github.com/duosecurity/duo_universal_golang v1.0.3
+    github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.1

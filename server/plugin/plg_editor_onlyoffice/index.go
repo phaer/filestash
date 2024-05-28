@@ -3,6 +3,7 @@ package plg_editor_onlyoffice
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	. "github.com/mickael-kerjean/filestash/server/common"
 	"github.com/mickael-kerjean/filestash/server/ctrl"
@@ -27,7 +28,46 @@ var (
 	plugin_enable    func() bool
 	server_url       func() string
 	can_download     func() bool
+	jwt_secret       func() []byte
 )
+
+type onlyOfficePermissions struct {
+	Download bool `json:"download"`
+}
+
+type onlyOfficeDocument struct {
+	Title       string                `json:"title"`
+	URL         string                `json:"url"`
+	FileType    string                `json:"fileType"`
+	Key         string                `json:"key"`
+	Permissions onlyOfficePermissions `json:"permissions"`
+}
+
+type onlyOfficeUser struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type onlyOfficeCustomization struct {
+	Autosave      bool `json:"autosave"`
+	Forcesave     bool `json:"forcesave"`
+	CompactHeader bool `json:"compactHeader"`
+}
+
+type onlyOfficeEditorConfig struct {
+	CallbackURL   string                  `json:"callbackUrl"`
+	Mode          string                  `json:"mode"`
+	Customization onlyOfficeCustomization `json:"customization"`
+	User          onlyOfficeUser          `json:"user"`
+}
+
+type onlyOfficeDocEditorConfig struct {
+	Token        string                 `json:"token"`
+	DocumentType string                 `json:"documentType"`
+	Type         string                 `json:"type"`
+	Document     onlyOfficeDocument     `json:"document"`
+	EditorConfig onlyOfficeEditorConfig `json:"editorConfig"`
+}
 
 type onlyOfficeCacheData struct {
 	Path string
@@ -45,7 +85,7 @@ func init() {
 			}
 			f.Name = "enable"
 			f.Type = "enable"
-			f.Target = []string{"onlyoffice_server", "onlyoffice_can_download"}
+			f.Target = []string{"onlyoffice_server", "onlyoffice_jwt_secret", "onlyoffice_can_download"}
 			f.Description = "Enable/Disable the office suite to manage word, excel and powerpoint documents."
 			f.Default = false
 			if u := os.Getenv("ONLYOFFICE_URL"); u != "" {
@@ -72,6 +112,25 @@ func init() {
 			return f
 		}).String()
 	}
+	jwt_secret = func() []byte {
+		return []byte(Config.Get("features.office.onlyoffice_jwt_secret").Schema(func(f *FormElement) *FormElement {
+			if f == nil {
+				f = &FormElement{}
+			}
+			f.Id = "onlyoffice_jwt_secret"
+			f.Name = "jwt_secret"
+			f.Type = "text"
+			f.Description = "Path to JWT secret key with which to validate requests from and to your OnlyOffice server"
+			f.Default = "/run/secrets/onlyoffice/jwt-secret"
+			f.Placeholder = "Eg: /run/secrets/onlyoffice/jwt-secret"
+			if u := os.Getenv("ONLYOFFICE_JWT_SECRET"); u != "" {
+				f.Default = u
+				f.Placeholder = fmt.Sprintf("Default: '%s'", u)
+			}
+			return f
+		}).String())
+	}
+
 	can_download = func() bool {
 		return Config.Get("features.office.can_download").Schema(func(f *FormElement) *FormElement {
 			if f == nil {
@@ -89,6 +148,7 @@ func init() {
 	Hooks.Register.Onload(func() {
 		plugin_enable()
 		server_url()
+		jwt_secret()
 		can_download()
 	})
 
@@ -116,6 +176,38 @@ func init() {
               return ["appframe", {"endpoint": "/api/onlyoffice/iframe"}];
            }
    `)
+}
+
+func generateToken(config onlyOfficeDocEditorConfig) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"document":     config.Document,
+		"editorConfig": config.EditorConfig,
+		"documentType": config.DocumentType,
+		"type":         config.Type,
+		"exp":          time.Now().Add(time.Hour).Unix(),
+	})
+
+	tokenString, err := token.SignedString(jwt_secret())
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+}
+
+func generateClientConfig(config onlyOfficeDocEditorConfig) (string, error) {
+	token, err := generateToken(config)
+	if err != nil {
+		return "", fmt.Errorf("Error generating JWT token:", err)
+	}
+	config.Token = token
+
+	jsonData, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("Error marshalling to JSON:", err)
+	}
+
+	return string(jsonData), nil
 }
 
 func StaticHandler(res http.ResponseWriter, req *http.Request) {
@@ -320,6 +412,41 @@ func IframeContentHandler(ctx *App, res http.ResponseWriter, req *http.Request) 
 	}(path)
 	filetype = strings.TrimPrefix(filepath.Ext(filename), ".")
 	onlyoffice_cache.Set(key, &onlyOfficeCacheData{path, ctx.Backend.Save, ctx.Backend.Cat}, cache.DefaultExpiration)
+
+	config := onlyOfficeDocEditorConfig {
+		DocumentType: contentType,
+		Type:         oodsDevice,
+		Document: onlyOfficeDocument{
+			Title:    filename,
+			URL:      fmt.Sprintf("%s/onlyoffice/content?key=%s", filestashServerLocation, key),
+			FileType: filetype,
+			Key:      key,
+			Permissions: onlyOfficePermissions{
+				Download: can_download(),
+			},
+		},
+		EditorConfig: onlyOfficeEditorConfig{
+			CallbackURL: fmt.Sprintf("%s/onlyoffice/event", filestashServerLocation),
+			Mode:        oodsMode,
+			Customization: onlyOfficeCustomization{
+				Autosave:      false,
+				Forcesave:     true,
+				CompactHeader: true,
+			},
+			User: onlyOfficeUser{
+				ID:   userId,
+				Name: username,
+			},
+		},
+	}
+	configSigned, err := generateClientConfig(config);
+	if err != nil {
+		res.WriteHeader(http.StatusServiceUnavailable)
+		res.Write([]byte("<p>Request to the Onlyoffice could not be signed via JWT.</p>"))
+		Log.Warning("[onlyoffice] could not sign jwt: %+v", err)
+		return
+	}
+
 	res.Write([]byte(fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -336,33 +463,7 @@ func IframeContentHandler(ctx *App, res http.ResponseWriter, req *http.Request) 
       else sendError("[error] Can't reach the onlyoffice server");
 
       function loadApplication() {
-          new DocsAPI.DocEditor("placeholder", {
-              "token": "foobar",
-              "documentType": "%s",
-              "type": "%s",
-              "document": {
-                  "title": "%s",
-                  "url": "%s/onlyoffice/content?key=%s",
-                  "fileType": "%s",
-                  "key": "%s",
-                  "permissions": {
-                      "download": %s
-                  }
-              },
-              "editorConfig": {
-                  "callbackUrl": "%s/onlyoffice/event",
-                  "mode": "%s",
-                  "customization": {
-                      "autosave": false,
-                      "forcesave": true,
-                      "compactHeader": true
-                  },
-                  "user": {
-                      "id": "%s",
-                      "name": "%s"
-                  }
-              }
-          });
+          new DocsAPI.DocEditor("placeholder", %s);
       }
       function sendError(message){
           let $el = document.createElement("p");
@@ -373,22 +474,7 @@ func IframeContentHandler(ctx *App, res http.ResponseWriter, req *http.Request) 
     </script>
   </body>
 </html>`,
-		contentType,
-		oodsDevice,
-		filename,
-		filestashServerLocation, key,
-		filetype,
-		key,
-		func() string {
-			if can_download() {
-				return "true"
-			}
-			return "false"
-		}(),
-		filestashServerLocation,
-		oodsMode,
-		userId,
-		username,
+		configSigned,
 	)))
 }
 
