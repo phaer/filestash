@@ -142,28 +142,15 @@ in {
         systemd = {
             tmpfiles.rules = [
                 "d  ${cfg.dataDir}/data        0771 filestash filestash - -"
-                "d  ${cfg.dataDir}/data/state  0771 filestash filestash - -"
+                "d  ${cfg.dataDir}/state  0771 filestash filestash - -"
                 "d  ${cfg.dataDir}/state/config  0771 filestash filestash - -"
                 "f  ${cfg.dataDir}/state/config/config.json  0771 filestash filestash - -"
             ];
             services.filestash = {
                 preStart = let
                     configPath = "${cfg.dataDir}/state/config/config.json";
-                    diffPath = "${cfg.dataDir}/state/config/.config.json.diff";
                     newConfig = settingsFormat.generate "filestash.json" (lib.recursiveUpdate defaults cfg.settings);
                 in ''
-                  if [ -f "${configPath}" ]
-                  then
-                    configDiff="$(${pkgs.diffutils}/bin/diff "${configPath}" "${newConfig}" || true)"
-                    if [ ! -z "$configDiff" ]
-                    then
-                        echo "Saving old config to ${diffPath}"
-                        echo "''$configDiff" > "${diffPath}"
-                    else
-                        echo "Config is the same as last run"
-                    fi
-                  fi
-                  echo "Updating config"
                   ${pkgs.jq}/bin/jq \
                     --rawfile secretKey ${cfg.secretKeyPath} \
                     --rawfile adminPassword ${cfg.adminPasswordPath} \
