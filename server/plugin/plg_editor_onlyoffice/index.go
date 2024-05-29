@@ -198,13 +198,13 @@ func generateToken(config onlyOfficeDocEditorConfig) (string, error) {
 func generateClientConfig(config onlyOfficeDocEditorConfig) (string, error) {
 	token, err := generateToken(config)
 	if err != nil {
-		return "", fmt.Errorf("Error generating JWT token:", err)
+		return "", fmt.Errorf("Error generating JWT token: %v", err)
 	}
 	config.Token = token
 
 	jsonData, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("Error marshalling to JSON:", err)
+		return "", fmt.Errorf("Error marshalling to JSON: %v", err)
 	}
 
 	return string(jsonData), nil
