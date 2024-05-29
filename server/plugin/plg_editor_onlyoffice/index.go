@@ -511,27 +511,27 @@ func FetchContentHandler(res http.ResponseWriter, req *http.Request) {
 
 type onlyOfficeEventObject struct {
 	Actions []struct {
-		Type   int    `json: "type"`
-		UserId string `json: "userid" `
-	} `json: "actions"`
-	ChangesURL    string `json: "changesurl"`
-	Forcesavetype int    `json: "forcesavetype"`
+		Type   int    `json:"type"`
+		UserId string `json:"userid" `
+	} `json:"actions"`
+	ChangesURL    string `json:"changesurl"`
+	Forcesavetype int    `json:"forcesavetype"`
 	History       struct {
-		ServerVersion string `json: "serverVersion"`
+		ServerVersion string `json:"serverVersion"`
 		Changes       []struct {
-			Created string `json: "created"`
+			Created string `json:"created"`
 			User    struct {
-				Id   string `json: "id"`
-				Name string `json: "name"`
+				Id   string `json:"id"`
+				Name string `json:"name"`
 			}
-		} `json: "changes"`
-	} `json: "history"`
-	Key      string   `json: "key"`
-	Status   int      `json: "status"`
-	Url      string   `json: "url"`
-	UserData string   `json: "userdata"`
-	Lastsave string   `json: "lastsave"`
-	Users    []string `json: "users"`
+		} `json:"changes"`
+	} `json:"history"`
+	Key      string   `json:"key"`
+	Status   int      `json:"status"`
+	Url      string   `json:"url"`
+	UserData string   `json:"userdata"`
+	Lastsave string   `json:"lastsave"`
+	Users    []string `json:"users"`
 }
 
 func OnlyOfficeEventHandler(res http.ResponseWriter, req *http.Request) {
