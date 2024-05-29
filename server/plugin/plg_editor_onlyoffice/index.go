@@ -446,6 +446,7 @@ func IframeContentHandler(ctx *App, res http.ResponseWriter, req *http.Request) 
 		Log.Warning("[onlyoffice] could not sign jwt: %+v", err)
 		return
 	}
+	Log.Warning("signed JWT: %s", configSigned)
 
 	res.Write([]byte(fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
