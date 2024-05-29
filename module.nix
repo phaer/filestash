@@ -24,7 +24,6 @@ let
         features = {
             api = {
                 enable = null;
-                api_key = null;
             };
             share = {
                 enable = null;
@@ -62,7 +61,6 @@ let
             server = null;
             port = null;
             username = null;
-            password = null;
             from = null;
         };
         auth = {};
@@ -85,6 +83,29 @@ in {
             default = "/var/lib/filestash";
             type = str;
         };
+        secretKeyPath = lib.mkOption {
+            description = "Path to a file containing general.secret_key";
+            default = "/var/run/secrets/filestash/secret_key";
+            type = path;
+        };
+        adminPasswordPath = lib.mkOption {
+            description = "Path to a file containing auth.admin";
+            default = "/var/run/secrets/filestash/admin_password";
+            type = path;
+        };
+        apiKeyPath = lib.mkOption {
+            description = "Path to a file containing features.api.api_key";
+            default = null;
+            example = "/var/run/secrets/filestash/api_key";
+            type = nullOr path;
+        };
+        emailPasswordPath = lib.mkOption {
+            description = "Path to a file containing email.password";
+            default = null;
+            example = "/var/run/secrets/filestash/email_password";
+            type = nullOr path;
+        };
+
         settings = lib.mkOption {
             type = submodule {
                 freeformType = settingsFormat.type;
@@ -120,10 +141,10 @@ in {
 
         systemd = {
             tmpfiles.rules = [
-                "d  ${cfg.dataDir}/data        0771 - - - -"
-                "d  ${cfg.dataDir}/data/state  0771 - - - -"
-                "d  ${cfg.dataDir}/config  0771 - - - -"
-                "f  ${cfg.dataDir}/config/config.json  0771 - - - -"
+                "d  ${cfg.dataDir}/data        0771 filestash filestash - -"
+                "d  ${cfg.dataDir}/data/state  0771 filestash filestash - -"
+                "d  ${cfg.dataDir}/state/config  0771 filestash filestash - -"
+                "f  ${cfg.dataDir}/state/config/config.json  0771 filestash filestash - -"
             ];
             services.filestash = {
                 preStart = let
@@ -143,11 +164,24 @@ in {
                     fi
                   fi
                   echo "Updating config"
-                  install -m 660 -T "${newConfig}" "${configPath}"
+                  ${pkgs.jq}/bin/jq \
+                    --rawfile secretKey ${cfg.secretKeyPath} \
+                    --rawfile adminPassword ${cfg.adminPasswordPath} \
+                    ${lib.optionalString (cfg.apiKeyPath != null) "--rawfile apiKey ${cfg.apiKeyPath}"} \
+                    ${lib.optionalString (cfg.emailPasswordPath != null) "--rawfile emailPassword ${cfg.emailPasswordPath}"} \
+                    '
+                        .general.secret_key = $secretKey
+                        | .auth.admin = $adminPassword
+                        ${lib.optionalString (cfg.apiKeyPath != null) "| .features.api.api_key = $apiKey"}
+                        ${lib.optionalString (cfg.emailPasswordPath != null) "| .email.password = $emailPassword"}
+                    ' \
+                    ${newConfig} \
+                    > "${configPath}"
+                    export CONFIG_SECRET="$(cat "${cfg.secretKeyPath}")"
                 '';
                 description = "A modern web client for SFTP and more";
                 wantedBy = [ "multi-user.target" ];
-                wants = [ "network-online.target" ];
+                wants = [ "network-online.target"  ];
                 after = [ "network-online.target" ];
                 serviceConfig = {
                     User = "filestash";
