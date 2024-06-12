@@ -66,6 +66,7 @@
               vendorHash = "sha256-oPr2nk58MVUbas+1geFx8r/YM/qrYdbxqkvSIwJVGmo=";
 
               buildPhase = ''
+                make -C $src/server/plugin/plg_image_thumbnail/
                 mkdir -p $out/bin
                 go build --tags "fts5" -o $out/bin/filestash cmd/main.go
                 cp config/config.json $out/config.dist.json
